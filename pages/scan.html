@@ -26,6 +26,14 @@
                 <button class="btn" id="btn-switch">カメラ切替</button>
             </div>
         </section>
+        <section class="list">
+            <table class="table">
+                <thead>
+                    <tr><th>型番（昇順）</th><th>数量</th></tr>
+                </thead>
+                <tbody id="scan-list-body"></tbody>
+            </table>
+        </section>
         <section class="scanner__fallback">
             <input type="file" id="file-input" accept="image/*" class="input input--file">
         </section>
@@ -34,5 +42,23 @@
     <script src="../assets/js/common.js"></script>
     <script src="../assets/js/components.js"></script>
     <script src="../assets/js/tools/scanner.js"></script>
+    <script>
+        (function() {
+            const KEY_COUNTS = 'inventory.counts';
+            function loadCounts() { try { return JSON.parse(localStorage.getItem(KEY_COUNTS) || '{}'); } catch (_) { return {}; } }
+            function renderList() {
+                const counts = loadCounts();
+                const tbody = document.getElementById('scan-list-body');
+                tbody.innerHTML = '';
+                Object.keys(counts).sort((a, b) => a.localeCompare(b)).forEach(model => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${model}</td><td>${parseInt(counts[model], 10) || 0}</td>`;
+                    tbody.appendChild(tr);
+                });
+            }
+            document.addEventListener('DOMContentLoaded', renderList);
+            window.addEventListener('counts:updated', renderList);
+        })();
+    </script>
 </body>
 </html> 

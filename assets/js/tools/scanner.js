@@ -11,6 +11,13 @@
     let ctx = null;
     let currentFacing = 'environment';
 
+    function emitCountsUpdated() {
+        try {
+            const event = new CustomEvent('counts:updated');
+            window.dispatchEvent(event);
+        } catch (_) {}
+    }
+
     async function getBackCamera() {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const videos = devices.filter(d => d.kind === 'videoinput');
@@ -33,20 +40,16 @@
 
     async function startCamera() {
         try {
-            // 1) facingMode exact
             await startWithConstraints({ facingMode: { exact: 'environment' } });
         } catch (e1) {
             try {
-                // 2) facingMode ideal
                 await startWithConstraints({ facingMode: 'environment' });
             } catch (e2) {
                 try {
-                    // 3) deviceId（許可後であれば特定可）
                     const deviceId = currentDeviceId || await getBackCamera();
                     if (deviceId) {
                         await startWithConstraints({ deviceId });
                     } else {
-                        // 4) 最後の手段
                         await startWithConstraints(true);
                     }
                 } catch (e3) {
@@ -66,7 +69,6 @@
 
     async function switchCamera() {
         try {
-            // 複数デバイスがない場合は facingMode をトグル
             const devices = await navigator.mediaDevices.enumerateDevices();
             const videos = devices.filter(d => d.kind === 'videoinput');
             if (videos.length < 2) {
@@ -75,14 +77,12 @@
                 await startWithConstraints({ facingMode: currentFacing });
                 return;
             }
-            // 複数ある場合は次のdeviceIdへ
             const idx = videos.findIndex(v => v.deviceId === currentDeviceId);
             const next = videos[(idx + 1) % videos.length];
             currentDeviceId = next.deviceId;
             stopCamera();
             await startWithConstraints({ deviceId: currentDeviceId });
         } catch (_) {
-            // 失敗時はトグルで再試行
             try {
                 currentFacing = currentFacing === 'environment' ? 'user' : 'environment';
                 stopCamera();
@@ -110,6 +110,7 @@
         counts[model] = next;
         localStorage.setItem(KEY_COUNTS, JSON.stringify(counts));
         addHistory({ ts: Date.now(), model, delta, raw });
+        emitCountsUpdated();
     }
 
     let lastTs = 0;
@@ -118,7 +119,6 @@
         try { if (settings.scan?.vibrate && navigator.vibrate) navigator.vibrate(50); } catch(_){ }
     }
 
-    // jsQRを使って連続的にビデオフレームを解析
     function loopDecode() {
         const statusEl = document.getElementById('status');
         const video = document.getElementById('preview');
@@ -154,6 +154,7 @@
                             maybeBeepVibrate(settings);
                             lastTs = Date.now();
                             statusEl.textContent = `${model} を+1`;
+                            if (window.showToast) window.showToast(`${model} を+1`);
                         }
                     }
                 }
@@ -162,7 +163,6 @@
         };
         requestAnimationFrame(tick);
 
-        // 画像ファイルからの解析
         const fileInput = document.getElementById('file-input');
         fileInput?.addEventListener('change', async (e) => {
             const file = e.target.files && e.target.files[0];
@@ -187,25 +187,29 @@
                             incCount(model, +1, raw);
                             maybeBeepVibrate(settings);
                             statusEl.textContent = `${model} を+1（画像）`;
+                            if (window.showToast) window.showToast(`${model} を+1（画像）`);
                         } else {
                             statusEl.textContent = '抽出結果が空（開始位置を見直してください）';
+                            if (window.showToast) window.showToast('抽出結果が空', { error: true });
                         }
                     } else {
                         statusEl.textContent = '画像からQRを検出できませんでした';
+                        if (window.showToast) window.showToast('画像からQRを検出できませんでした', { error: true });
                     }
                     URL.revokeObjectURL(url);
                 };
                 img.onerror = () => {
                     statusEl.textContent = '画像の読み込みに失敗しました';
+                    if (window.showToast) window.showToast('画像の読み込みに失敗しました', { error: true });
                     URL.revokeObjectURL(url);
                 };
                 img.src = url;
             } catch (_) {
                 statusEl.textContent = '画像解析でエラーが発生しました';
+                if (window.showToast) window.showToast('画像解析でエラーが発生しました', { error: true });
             }
         });
 
-        // 開発用: EnterでRAW入力
         document.addEventListener('keydown', (ev) => {
             if (!isRunning) return;
             if (ev.key === 'Enter') {
@@ -217,6 +221,7 @@
                         incCount(model, +1, raw);
                         maybeBeepVibrate(settings);
                         document.getElementById('status').textContent = `${model} を+1`;
+                        if (window.showToast) window.showToast(`${model} を+1`);
                     }
                 }
             }
@@ -225,7 +230,6 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         const statusEl = document.getElementById('status');
-        // セキュアコンテキストでない場合の注意
         if (!window.isSecureContext && location.hostname !== 'localhost') {
             statusEl.textContent = 'カメラはHTTPS環境でのみ動作します（GitHub Pages等でhttpsアクセスしてください）';
             return;

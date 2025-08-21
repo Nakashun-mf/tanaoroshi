@@ -16,7 +16,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (yearElement) yearElement.textContent = String(new Date().getFullYear());
 
         // フッター内ナビのリンクを現在の深さに合わせて書き換え
-        const to = (p) => `${base}${p.startsWith('/') ? '' : '/'}${p.replace(/^\//, '')}`;
+        const to = (p) => `${base}/${p.replace(/^\//, '')}`;
         document.querySelectorAll('.nav__link').forEach((a) => {
             const name = a.textContent?.trim();
             switch (name) {
