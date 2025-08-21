@@ -10,12 +10,21 @@
     let canvas = null;
     let ctx = null;
     let currentFacing = 'environment';
+    const lastScanByModel = {};
 
     function emitCountsUpdated() {
         try {
             const event = new CustomEvent('counts:updated');
             window.dispatchEvent(event);
         } catch (_) {}
+    }
+
+    function canCountNow(model, cooldownMs) {
+        const now = Date.now();
+        const last = lastScanByModel[model] || 0;
+        if (now - last < cooldownMs) return false;
+        lastScanByModel[model] = now;
+        return true;
     }
 
     async function getBackCamera() {
@@ -149,12 +158,17 @@
                         const raw = String(result.data);
                         const n = settings.extraction?.startIndex ?? 50;
                         const model = (raw || '').slice(n).trim();
+                        const cooldown = settings.scan?.cooldownMs ?? 100;
                         if (model) {
-                            incCount(model, +1, raw);
-                            maybeBeepVibrate(settings);
-                            lastTs = Date.now();
-                            statusEl.textContent = `${model} を+1`;
-                            if (window.showToast) window.showToast(`${model} を+1`);
+                            if (!canCountNow(model, cooldown)) {
+                                // 同一型番のクールダウン中は無視
+                            } else {
+                                incCount(model, +1, raw);
+                                maybeBeepVibrate(settings);
+                                lastTs = Date.now();
+                                statusEl.textContent = `${model} を+1`;
+                                if (window.showToast) window.showToast(`${model} を+1`);
+                            }
                         }
                     }
                 }
@@ -167,6 +181,7 @@
         fileInput?.addEventListener('change', async (e) => {
             const file = e.target.files && e.target.files[0];
             if (!file) return;
+            const settings = loadSettings();
             try {
                 const url = URL.createObjectURL(file);
                 const img = new Image();
@@ -183,11 +198,16 @@
                         const raw = String(result.data);
                         const n = settings.extraction?.startIndex ?? 50;
                         const model = (raw || '').slice(n).trim();
+                        const cooldown = settings.scan?.cooldownMs ?? 100;
                         if (model) {
-                            incCount(model, +1, raw);
-                            maybeBeepVibrate(settings);
-                            statusEl.textContent = `${model} を+1（画像）`;
-                            if (window.showToast) window.showToast(`${model} を+1（画像）`);
+                            if (!canCountNow(model, cooldown)) {
+                                // 同一型番のクールダウン中は無視
+                            } else {
+                                incCount(model, +1, raw);
+                                maybeBeepVibrate(settings);
+                                statusEl.textContent = `${model} を+1（画像）`;
+                                if (window.showToast) window.showToast(`${model} を+1（画像）`);
+                            }
                         } else {
                             statusEl.textContent = '抽出結果が空（開始位置を見直してください）';
                             if (window.showToast) window.showToast('抽出結果が空', { error: true });
@@ -213,15 +233,21 @@
         document.addEventListener('keydown', (ev) => {
             if (!isRunning) return;
             if (ev.key === 'Enter') {
+                const settings = loadSettings();
                 const raw = prompt('デバッグ用: QR RAW を入力してください');
                 if (raw != null) {
                     const n = settings.extraction?.startIndex ?? 50;
                     const model = (raw || '').slice(n).trim();
+                    const cooldown = settings.scan?.cooldownMs ?? 100;
                     if (model) {
-                        incCount(model, +1, raw);
-                        maybeBeepVibrate(settings);
-                        document.getElementById('status').textContent = `${model} を+1`;
-                        if (window.showToast) window.showToast(`${model} を+1`);
+                        if (!canCountNow(model, cooldown)) {
+                            // 同一型番のクールダウン中は無視
+                        } else {
+                            incCount(model, +1, raw);
+                            maybeBeepVibrate(settings);
+                            document.getElementById('status').textContent = `${model} を+1`;
+                            if (window.showToast) window.showToast(`${model} を+1`);
+                        }
                     }
                 }
             }
