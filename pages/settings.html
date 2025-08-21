@@ -44,10 +44,20 @@
             function loadSettings() {
                 const defaults = { extraction: { startIndex: 50 }, scan: { cooldownMs: 100, beep: true, vibrate: true } };
                 const s = JSON.parse(localStorage.getItem(KEY_SETTINGS) || 'null') || defaults;
+                const vibrateSupported = window.isVibrateSupported && window.isVibrateSupported();
                 document.getElementById('startIndex').value = s.extraction?.startIndex ?? 50;
                 document.getElementById('cooldownMs').value = s.scan?.cooldownMs ?? 100;
                 document.getElementById('beep').checked = s.scan?.beep ?? true;
-                document.getElementById('vibrate').checked = s.scan?.vibrate ?? true;
+                document.getElementById('vibrate').checked = vibrateSupported ? (s.scan?.vibrate ?? true) : false;
+                const vibrateInput = document.getElementById('vibrate');
+                const vibrateLabel = vibrateInput.closest('.form__switch');
+                if (!vibrateSupported) {
+                    vibrateInput.disabled = true;
+                    if (vibrateLabel) {
+                        vibrateLabel.title = 'この端末はバイブに非対応です';
+                        vibrateLabel.style.opacity = '0.6';
+                    }
+                }
             }
             function saveSettings(e) {
                 e.preventDefault();
@@ -57,7 +67,11 @@
                 if (Number.isNaN(cooldownMs) || cooldownMs < 50 || cooldownMs > 2000) return alert('クールダウンは50〜2000msで入力してください');
                 const settings = {
                     extraction: { startIndex },
-                    scan: { cooldownMs, beep: document.getElementById('beep').checked, vibrate: document.getElementById('vibrate').checked }
+                    scan: { 
+                        cooldownMs, 
+                        beep: document.getElementById('beep').checked, 
+                        vibrate: (window.isVibrateSupported && window.isVibrateSupported()) ? document.getElementById('vibrate').checked : false 
+                    }
                 };
                 localStorage.setItem('inventory.settings', JSON.stringify(settings));
                 alert('保存しました');

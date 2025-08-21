@@ -69,4 +69,9 @@
         osc.start(now);
         osc.stop(now + durationSec);
     };
+
+    // Vibration API 対応可否
+    window.isVibrateSupported = function() {
+        return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+    };
 })(); 

@@ -125,7 +125,7 @@
     let lastTs = 0;
     function maybeBeepVibrate(settings) {
         try { if (settings.scan?.beep && window.beep) window.beep(1200, 0.06, 0.05); } catch(_){ }
-        try { if (settings.scan?.vibrate && navigator.vibrate) navigator.vibrate(30); } catch(_){ }
+        try { if (settings.scan?.vibrate && window.isVibrateSupported && window.isVibrateSupported()) navigator.vibrate(30); } catch(_){ }
     }
 
     function loopDecode() {
