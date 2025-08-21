@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>履歴</title>
+    <meta name="description" content="最新順のスキャン・操作履歴を表示する画面">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="/pages/history.html">
+    <link rel="stylesheet" href="/assets/css/common.css">
+    <link rel="stylesheet" href="/assets/css/components.css">
+    <link rel="stylesheet" href="/assets/css/pages.css">
+</head>
+<body>
+    <header id="header"></header>
+    <main class="page page--history">
+        <section class="history">
+            <div class="history__actions">
+                <button id="btn-delete-selected" class="btn">選択削除</button>
+                <button id="btn-delete-all" class="btn btn--danger">全削除</button>
+            </div>
+            <table class="table history__table">
+                <thead>
+                    <tr><th>日時</th><th>型番</th><th>変化</th><th>RAW</th><th></th></tr>
+                </thead>
+                <tbody id="history-body"></tbody>
+            </table>
+        </section>
+    </main>
+    <footer id="footer"></footer>
+    <script src="/assets/js/common.js"></script>
+    <script src="/assets/js/components.js"></script>
+    <script>
+        (function() {
+            const KEY = 'inventory.history';
+            const LIMIT = 1000;
+            function render() {
+                const body = document.getElementById('history-body');
+                body.innerHTML = '';
+                const items = JSON.parse(localStorage.getItem(KEY) || '[]');
+                items.slice().reverse().forEach((it, idx) => {
+                    const tr = document.createElement('tr');
+                    const dt = new Date(it.ts);
+                    const rawShort = (it.raw || '').slice(0, 64);
+                    tr.innerHTML = `
+                        <td>${dt.toLocaleString()}</td>
+                        <td>${it.model}</td>
+                        <td>${it.delta > 0 ? '+' + it.delta : it.delta}</td>
+                        <td title="${(it.raw || '').replace(/\"/g, '“')}">${rawShort}</td>
+                        <td><input type="checkbox" data-index="${idx}"></td>
+                    `;
+                    body.appendChild(tr);
+                });
+            }
+            function deleteSelected() {
+                const items = JSON.parse(localStorage.getItem(KEY) || '[]');
+                const checkboxes = document.querySelectorAll('tbody input[type="checkbox"]');
+                const toDelete = [];
+                checkboxes.forEach(cb => { if (cb.checked) toDelete.push(parseInt(cb.getAttribute('data-index'), 10)); });
+                if (toDelete.length === 0) return;
+                if (!confirm(`${toDelete.length}件を削除しますか？`)) return;
+                const remaining = items.filter((_, i) => !toDelete.includes(i));
+                localStorage.setItem(KEY, JSON.stringify(remaining.slice(-LIMIT)));
+                render();
+            }
+            function deleteAll() {
+                if (!confirm('すべて削除しますか？')) return;
+                localStorage.removeItem(KEY);
+                render();
+            }
+            document.addEventListener('DOMContentLoaded', () => {
+                render();
+                document.getElementById('btn-delete-selected').addEventListener('click', deleteSelected);
+                document.getElementById('btn-delete-all').addEventListener('click', deleteAll);
+            });
+        })();
+    </script>
+</body>
+</html> 

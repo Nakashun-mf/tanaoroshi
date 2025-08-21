@@ -1,0 +1,12 @@
+/* Dashboard */
+.page--dashboard .actions { margin-bottom: 16px; }
+
+/* Scan */
+.page--scan .scanner { display: grid; gap: 12px; }
+.page--scan .scanner__fallback { margin-top: 8px; }
+
+/* Settings */
+.page--settings .form--settings { max-width: 480px; margin: 0 auto; }
+
+/* History */
+.page--history .history__actions { display: flex; gap: 8px; margin-bottom: 8px; } 

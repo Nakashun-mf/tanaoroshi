@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>スキャン</title>
+    <meta name="description" content="QRコードを読み取り、型番を抽出・集計するスキャン画面">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="/pages/scan.html">
+    <link rel="stylesheet" href="/assets/css/common.css">
+    <link rel="stylesheet" href="/assets/css/components.css">
+    <link rel="stylesheet" href="/assets/css/pages.css">
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+</head>
+<body>
+    <header id="header"></header>
+    <main class="page page--scan">
+        <section class="scanner">
+            <div class="scanner__video-wrap">
+                <video id="preview" class="scanner__video" playsinline></video>
+                <div class="scanner__guide"></div>
+            </div>
+            <div id="status" class="scanner__status">読み取り中...</div>
+            <div class="scanner__actions">
+                <button class="btn btn--primary" id="btn-toggle">停止</button>
+                <button class="btn" id="btn-switch">カメラ切替</button>
+            </div>
+        </section>
+        <section class="scanner__fallback">
+            <input type="file" id="file-input" accept="image/*" class="input input--file">
+        </section>
+    </main>
+    <footer id="footer"></footer>
+    <script src="/assets/js/common.js"></script>
+    <script src="/assets/js/components.js"></script>
+    <script src="/assets/js/tools/scanner.js"></script>
+</body>
+</html> 

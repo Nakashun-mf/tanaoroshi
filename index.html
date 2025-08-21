@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>棚卸ダッシュボード</title>
+    <meta name="description" content="QRスキャンで型番ごとに数量を集計する棚卸アプリのダッシュボード">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="/">
+    <link rel="stylesheet" href="/assets/css/common.css">
+    <link rel="stylesheet" href="/assets/css/components.css">
+    <link rel="stylesheet" href="/assets/css/pages.css">
+</head>
+<body>
+    <header id="header"></header>
+    <main class="page page--dashboard">
+        <section class="actions">
+            <a class="btn btn--primary" href="/pages/scan.html">スキャンを開始</a>
+            <button class="btn btn--secondary" id="btn-export">CSVエクスポート</button>
+        </section>
+        <section class="cards">
+            <div class="card card--metric">
+                <div class="card__title">総型番数</div>
+                <div class="card__value" id="metric-models">0</div>
+            </div>
+            <div class="card card--metric">
+                <div class="card__title">合計数量</div>
+                <div class="card__value" id="metric-quantity">0</div>
+            </div>
+        </section>
+    </main>
+    <footer id="footer"></footer>
+    <script src="/assets/js/common.js"></script>
+    <script src="/assets/js/components.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // ダッシュボードの簡易表示値（localStorageから計算）
+            try {
+                const counts = JSON.parse(localStorage.getItem('inventory.counts') || '{}');
+                const models = Object.keys(counts);
+                const total = models.reduce((sum, m) => sum + (parseInt(counts[m], 10) || 0), 0);
+                document.getElementById('metric-models').textContent = String(models.length);
+                document.getElementById('metric-quantity').textContent = String(total);
+            } catch (_) {}
+            // CSVエクスポート
+            const exportBtn = document.getElementById('btn-export');
+            exportBtn?.addEventListener('click', () => {
+                try {
+                    const counts = JSON.parse(localStorage.getItem('inventory.counts') || '{}');
+                    const rows = Object.keys(counts).sort((a, b) => a.localeCompare(b)).map(model => ({ model, quantity: counts[model] }));
+                    const header = 'model,quantity\n';
+                    const csvBody = rows.map(r => {
+                        const escape = (v) => {
+                            const s = String(v);
+                            if (s.includes('"') || s.includes(',') || s.includes('\n')) {
+                                return '"' + s.replaceAll('"', '""') + '"';
+                            }
+                            return s;
+                        };
+                        return `${escape(r.model)},${escape(r.quantity)}`;
+                    }).join('\n');
+                    const csv = header + csvBody + '\n';
+                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                    const a = document.createElement('a');
+                    const now = new Date();
+                    const y = now.getFullYear();
+                    const m = String(now.getMonth() + 1).padStart(2, '0');
+                    const d = String(now.getDate()).padStart(2, '0');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `inventory_${y}${m}${d}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                } catch (_) {}
+            });
+        });
+    </script>
+</body>
+</html> 

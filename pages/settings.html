@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>設定</title>
+    <meta name="description" content="抽出開始位置やクールダウンなどの設定画面">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="/pages/settings.html">
+    <link rel="stylesheet" href="/assets/css/common.css">
+    <link rel="stylesheet" href="/assets/css/components.css">
+    <link rel="stylesheet" href="/assets/css/pages.css">
+</head>
+<body>
+    <header id="header"></header>
+    <main class="page page--settings">
+        <form id="settings-form" class="form form--settings">
+            <fieldset class="form__group">
+                <legend class="form__legend">抽出</legend>
+                <label class="form__label" for="startIndex">開始位置N (0〜500)</label>
+                <input class="input" type="number" id="startIndex" name="startIndex" min="0" max="500" step="1" required>
+            </fieldset>
+            <fieldset class="form__group">
+                <legend class="form__legend">スキャン挙動</legend>
+                <label class="form__label" for="cooldownMs">クールダウン(ms) (50〜2000)</label>
+                <input class="input" type="number" id="cooldownMs" name="cooldownMs" min="50" max="2000" step="1" required>
+                <label class="form__switch"><input type="checkbox" id="beep"> ビープ音</label>
+                <label class="form__switch"><input type="checkbox" id="vibrate"> バイブ</label>
+            </fieldset>
+            <div class="form__actions">
+                <button type="submit" class="btn btn--primary">保存</button>
+                <button type="button" id="btn-reset" class="btn">設定のリセット</button>
+                <button type="button" id="btn-clear" class="btn btn--danger">データ全消去</button>
+                <button type="button" id="btn-export" class="btn btn--secondary">CSV出力</button>
+            </div>
+        </form>
+    </main>
+    <footer id="footer"></footer>
+    <script src="/assets/js/common.js"></script>
+    <script src="/assets/js/components.js"></script>
+    <script>
+        (function() {
+            const KEY_SETTINGS = 'inventory.settings';
+            function loadSettings() {
+                const defaults = { extraction: { startIndex: 50 }, scan: { cooldownMs: 100, beep: true, vibrate: true } };
+                const s = JSON.parse(localStorage.getItem(KEY_SETTINGS) || 'null') || defaults;
+                document.getElementById('startIndex').value = s.extraction?.startIndex ?? 50;
+                document.getElementById('cooldownMs').value = s.scan?.cooldownMs ?? 100;
+                document.getElementById('beep').checked = s.scan?.beep ?? true;
+                document.getElementById('vibrate').checked = s.scan?.vibrate ?? true;
+            }
+            function saveSettings(e) {
+                e.preventDefault();
+                const startIndex = parseInt(document.getElementById('startIndex').value, 10);
+                const cooldownMs = parseInt(document.getElementById('cooldownMs').value, 10);
+                if (Number.isNaN(startIndex) || startIndex < 0 || startIndex > 500) return alert('開始位置Nは0〜500で入力してください');
+                if (Number.isNaN(cooldownMs) || cooldownMs < 50 || cooldownMs > 2000) return alert('クールダウンは50〜2000msで入力してください');
+                const settings = {
+                    extraction: { startIndex },
+                    scan: { cooldownMs, beep: document.getElementById('beep').checked, vibrate: document.getElementById('vibrate').checked }
+                };
+                localStorage.setItem('inventory.settings', JSON.stringify(settings));
+                alert('保存しました');
+            }
+            function resetSettings() {
+                if (!confirm('設定を初期値に戻しますか？')) return;
+                localStorage.removeItem('inventory.settings');
+                loadSettings();
+            }
+            function clearData() {
+                if (!confirm('counts と history を削除しますか？')) return;
+                localStorage.removeItem('inventory.counts');
+                localStorage.removeItem('inventory.history');
+                alert('削除しました');
+            }
+            function exportCsv() {
+                try {
+                    const counts = JSON.parse(localStorage.getItem('inventory.counts') || '{}');
+                    const rows = Object.keys(counts).sort((a, b) => a.localeCompare(b)).map(model => ({ model, quantity: counts[model] }));
+                    const header = 'model,quantity\n';
+                    const csvBody = rows.map(r => {
+                        const escape = (v) => {
+                            const s = String(v);
+                            if (s.includes('"') || s.includes(',') || s.includes('\n')) {
+                                return '"' + s.replaceAll('"', '""') + '"';
+                            }
+                            return s;
+                        };
+                        return `${escape(r.model)},${escape(r.quantity)}`;
+                    }).join('\n');
+                    const csv = header + csvBody + '\n';
+                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                    const a = document.createElement('a');
+                    const now = new Date();
+                    const y = now.getFullYear();
+                    const m = String(now.getMonth() + 1).padStart(2, '0');
+                    const d = String(now.getDate()).padStart(2, '0');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `inventory_${y}${m}${d}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                } catch (_) {}
+            }
+            document.addEventListener('DOMContentLoaded', () => {
+                loadSettings();
+                document.getElementById('settings-form').addEventListener('submit', saveSettings);
+                document.getElementById('btn-reset').addEventListener('click', resetSettings);
+                document.getElementById('btn-clear').addEventListener('click', clearData);
+                document.getElementById('btn-export').addEventListener('click', exportCsv);
+            });
+        })();
+    </script>
+</body>
+</html> 

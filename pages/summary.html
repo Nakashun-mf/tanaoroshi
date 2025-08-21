@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>サマリー</title>
+    <meta name="description" content="集計サマリーを表示する画面">
+    <meta name="robots" content="noindex, nofollow">
+    <link rel="canonical" href="/pages/summary.html">
+    <link rel="stylesheet" href="/assets/css/common.css">
+    <link rel="stylesheet" href="/assets/css/components.css">
+    <link rel="stylesheet" href="/assets/css/pages.css">
+</head>
+<body>
+    <header id="header"></header>
+    <main class="page page--summary">
+        <section class="cards">
+            <div class="card card--metric">
+                <div class="card__title">総型番数</div>
+                <div class="card__value" id="metric-models">0</div>
+            </div>
+            <div class="card card--metric">
+                <div class="card__title">合計数量</div>
+                <div class="card__value" id="metric-quantity">0</div>
+            </div>
+        </section>
+    </main>
+    <footer id="footer"></footer>
+    <script src="/assets/js/common.js"></script>
+    <script src="/assets/js/components.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            try {
+                const counts = JSON.parse(localStorage.getItem('inventory.counts') || '{}');
+                const models = Object.keys(counts);
+                const total = models.reduce((sum, m) => sum + (parseInt(counts[m], 10) || 0), 0);
+                document.getElementById('metric-models').textContent = String(models.length);
+                document.getElementById('metric-quantity').textContent = String(total);
+            } catch (_) {}
+        });
+    </script>
+</body>
+</html> 
