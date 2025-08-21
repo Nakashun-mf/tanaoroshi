@@ -9,6 +9,7 @@
     let isRunning = true;
     let canvas = null;
     let ctx = null;
+    let currentFacing = 'environment';
 
     async function getBackCamera() {
         const devices = await navigator.mediaDevices.enumerateDevices();
@@ -17,18 +18,41 @@
         return back ? back.deviceId : null;
     }
 
+    async function startWithConstraints(constraints) {
+        const video = document.getElementById('preview');
+        const s = await navigator.mediaDevices.getUserMedia({ video: constraints, audio: false });
+        stream = s;
+        video.srcObject = s;
+        await video.play();
+        const settings = s.getVideoTracks()[0]?.getSettings?.();
+        if (settings?.facingMode) currentFacing = settings.facingMode;
+        if (settings?.deviceId) currentDeviceId = settings.deviceId;
+        isRunning = true;
+        loopDecode();
+    }
+
     async function startCamera() {
         try {
-            const deviceId = currentDeviceId || await getBackCamera();
-            if (!deviceId) throw new Error('カメラが見つかりません');
-            stream = await navigator.mediaDevices.getUserMedia({ video: { deviceId }, audio: false });
-            const video = document.getElementById('preview');
-            video.srcObject = stream;
-            await video.play();
-            isRunning = true;
-            loopDecode();
-        } catch (e) {
-            document.getElementById('status').textContent = 'カメラ起動に失敗しました';
+            // 1) facingMode exact
+            await startWithConstraints({ facingMode: { exact: 'environment' } });
+        } catch (e1) {
+            try {
+                // 2) facingMode ideal
+                await startWithConstraints({ facingMode: 'environment' });
+            } catch (e2) {
+                try {
+                    // 3) deviceId（許可後であれば特定可）
+                    const deviceId = currentDeviceId || await getBackCamera();
+                    if (deviceId) {
+                        await startWithConstraints({ deviceId });
+                    } else {
+                        // 4) 最後の手段
+                        await startWithConstraints(true);
+                    }
+                } catch (e3) {
+                    document.getElementById('status').textContent = 'カメラ起動に失敗しました（HTTPSでアクセスしているか確認してください）';
+                }
+            }
         }
     }
 
@@ -42,15 +66,29 @@
 
     async function switchCamera() {
         try {
+            // 複数デバイスがない場合は facingMode をトグル
             const devices = await navigator.mediaDevices.enumerateDevices();
             const videos = devices.filter(d => d.kind === 'videoinput');
-            if (videos.length < 2) return;
+            if (videos.length < 2) {
+                currentFacing = currentFacing === 'environment' ? 'user' : 'environment';
+                stopCamera();
+                await startWithConstraints({ facingMode: currentFacing });
+                return;
+            }
+            // 複数ある場合は次のdeviceIdへ
             const idx = videos.findIndex(v => v.deviceId === currentDeviceId);
             const next = videos[(idx + 1) % videos.length];
             currentDeviceId = next.deviceId;
             stopCamera();
-            await startCamera();
-        } catch (_) {}
+            await startWithConstraints({ deviceId: currentDeviceId });
+        } catch (_) {
+            // 失敗時はトグルで再試行
+            try {
+                currentFacing = currentFacing === 'environment' ? 'user' : 'environment';
+                stopCamera();
+                await startWithConstraints({ facingMode: currentFacing });
+            } catch (_) {}
+        }
     }
 
     function loadSettings() {
@@ -76,8 +114,9 @@
 
     let lastTs = 0;
     function maybeBeepVibrate(settings) {
-        try { if (settings.scan?.beep) new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=').play().catch(()=>{}); } catch(_){}
-        try { if (settings.scan?.vibrate && navigator.vibrate) navigator.vibrate(50); } catch(_){}}
+        try { if (settings.scan?.beep) new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=').play().catch(()=>{}); } catch(_){ }
+        try { if (settings.scan?.vibrate && navigator.vibrate) navigator.vibrate(50); } catch(_){ }
+    }
 
     // jsQRを使って連続的にビデオフレームを解析
     function loopDecode() {
@@ -98,7 +137,6 @@
                 const w = video.videoWidth;
                 const h = video.videoHeight;
                 if (w && h) {
-                    // スケーリング（性能/精度バランス）。長辺を640pxに抑える
                     const scale = Math.min(1, 640 / Math.max(w, h));
                     const cw = Math.max(1, Math.floor(w * scale));
                     const ch = Math.max(1, Math.floor(h * scale));
@@ -112,7 +150,6 @@
                         const n = settings.extraction?.startIndex ?? 50;
                         const model = (raw || '').slice(n).trim();
                         if (model) {
-                            // 要件: クールダウン中も全てカウント
                             incCount(model, +1, raw);
                             maybeBeepVibrate(settings);
                             lastTs = Date.now();
@@ -134,7 +171,6 @@
                 const url = URL.createObjectURL(file);
                 const img = new Image();
                 img.onload = () => {
-                    // 長辺を1024pxに縮小
                     const scale = Math.min(1, 1024 / Math.max(img.width, img.height));
                     const cw = Math.max(1, Math.floor(img.width * scale));
                     const ch = Math.max(1, Math.floor(img.height * scale));
@@ -188,6 +224,16 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        const statusEl = document.getElementById('status');
+        // セキュアコンテキストでない場合の注意
+        if (!window.isSecureContext && location.hostname !== 'localhost') {
+            statusEl.textContent = 'カメラはHTTPS環境でのみ動作します（GitHub Pages等でhttpsアクセスしてください）';
+            return;
+        }
+        if (!navigator.mediaDevices?.getUserMedia) {
+            statusEl.textContent = 'この端末/ブラウザはカメラに対応していません';
+            return;
+        }
         document.getElementById('btn-toggle')?.addEventListener('click', () => {
             if (isRunning) {
                 stopCamera();
@@ -198,7 +244,6 @@
             }
         });
         document.getElementById('btn-switch')?.addEventListener('click', switchCamera);
-        if (navigator.mediaDevices?.getUserMedia) startCamera();
-        else document.getElementById('status').textContent = 'カメラ非対応（画像アップロードを利用）';
+        startCamera();
     });
 })(); 
