@@ -24,19 +24,83 @@
                 <div class="card__value" id="metric-quantity">0</div>
             </div>
         </section>
+        <!-- 一覧テーブルを追加 -->
+        <section class="list">
+            <table class="table">
+                <thead>
+                    <tr><th>型番（昇順）</th><th>数量</th><th>操作</th></tr>
+                </thead>
+                <tbody id="list-body"></tbody>
+            </table>
+        </section>
     </main>
     <footer id="footer"></footer>
     <script src="../assets/js/common.js"></script>
     <script src="../assets/js/components.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            try {
-                const counts = JSON.parse(localStorage.getItem('inventory.counts') || '{}');
+            const KEY_COUNTS = 'inventory.counts';
+            const KEY_HISTORY = 'inventory.history';
+            const HISTORY_LIMIT = 1000;
+
+            function loadCounts() {
+                try { return JSON.parse(localStorage.getItem(KEY_COUNTS) || '{}'); } catch (_) { return {}; }
+            }
+            function saveCounts(counts) {
+                localStorage.setItem(KEY_COUNTS, JSON.stringify(counts));
+            }
+            function addHistory(model, delta) {
+                const arr = JSON.parse(localStorage.getItem(KEY_HISTORY) || '[]');
+                arr.push({ ts: Date.now(), model, delta, raw: '' });
+                localStorage.setItem(KEY_HISTORY, JSON.stringify(arr.slice(-HISTORY_LIMIT)));
+            }
+            function updateMetrics(counts) {
                 const models = Object.keys(counts);
                 const total = models.reduce((sum, m) => sum + (parseInt(counts[m], 10) || 0), 0);
                 document.getElementById('metric-models').textContent = String(models.length);
                 document.getElementById('metric-quantity').textContent = String(total);
-            } catch (_) {}
+            }
+            function render() {
+                const counts = loadCounts();
+                updateMetrics(counts);
+                const tbody = document.getElementById('list-body');
+                tbody.innerHTML = '';
+                const models = Object.keys(counts).sort((a, b) => a.localeCompare(b));
+                models.forEach(model => {
+                    const qty = parseInt(counts[model], 10) || 0;
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${model}</td>
+                        <td>${qty}</td>
+                        <td>
+                            <button class="btn" data-action="dec" data-model="${model}">-</button>
+                            <button class="btn btn--primary" data-action="inc" data-model="${model}">+</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+            function changeQuantity(model, delta) {
+                const counts = loadCounts();
+                const current = parseInt(counts[model] || '0', 10) || 0;
+                const next = Math.max(0, Math.min(999999, current + delta));
+                counts[model] = next;
+                saveCounts(counts);
+                addHistory(model, delta);
+                render();
+            }
+
+            document.getElementById('list-body').addEventListener('click', (e) => {
+                const target = e.target;
+                if (!(target instanceof HTMLElement)) return;
+                const action = target.getAttribute('data-action');
+                const model = target.getAttribute('data-model');
+                if (!action || !model) return;
+                if (action === 'inc') changeQuantity(model, +1);
+                if (action === 'dec') changeQuantity(model, -1);
+            });
+
+            render();
         });
     </script>
 </body>
