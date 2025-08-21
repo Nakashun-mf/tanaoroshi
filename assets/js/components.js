@@ -22,4 +22,51 @@
             setTimeout(() => div.remove(), 250);
         }, duration);
     };
+
+    // Web Audio API によるビープ再生
+    const AUDIO = { ctx: null };
+    function ensureAudioContext() {
+        if (!AUDIO.ctx) {
+            const Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) return null;
+            AUDIO.ctx = new Ctx();
+        }
+        if (AUDIO.ctx.state === 'suspended') {
+            // 再開はユーザー操作時に行う
+        }
+        return AUDIO.ctx;
+    }
+    function unlockAudio() {
+        const ctx = ensureAudioContext();
+        if (!ctx) return;
+        if (ctx.state === 'suspended') {
+            ctx.resume().catch(() => {});
+        }
+        window.removeEventListener('pointerdown', unlockAudio);
+        window.removeEventListener('touchstart', unlockAudio);
+        window.removeEventListener('click', unlockAudio);
+    }
+    // 初回ジェスチャーで解放
+    window.addEventListener('pointerdown', unlockAudio, { once: true });
+    window.addEventListener('touchstart', unlockAudio, { once: true });
+    window.addEventListener('click', unlockAudio, { once: true });
+
+    window.beep = function(frequency = 880, durationSec = 0.08, volume = 0.06) {
+        const ctx = ensureAudioContext();
+        if (!ctx) return;
+        if (ctx.state === 'suspended') {
+            // まだ解放されていない場合はスキップ
+            return;
+        }
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.value = frequency;
+        gain.gain.value = volume;
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        const now = ctx.currentTime;
+        osc.start(now);
+        osc.stop(now + durationSec);
+    };
 })(); 

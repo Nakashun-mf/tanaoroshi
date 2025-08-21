@@ -124,8 +124,8 @@
 
     let lastTs = 0;
     function maybeBeepVibrate(settings) {
-        try { if (settings.scan?.beep) new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=').play().catch(()=>{}); } catch(_){ }
-        try { if (settings.scan?.vibrate && navigator.vibrate) navigator.vibrate(50); } catch(_){ }
+        try { if (settings.scan?.beep && window.beep) window.beep(1200, 0.06, 0.05); } catch(_){ }
+        try { if (settings.scan?.vibrate && navigator.vibrate) navigator.vibrate(30); } catch(_){ }
     }
 
     function loopDecode() {
