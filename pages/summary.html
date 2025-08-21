@@ -26,6 +26,9 @@
         </section>
         <!-- 一覧テーブルを追加 -->
         <section class="list">
+            <div class="actions" style="margin: 8px 0; display: flex; gap: 8px;">
+                <button class="btn btn--danger" id="btn-delete-all">全削除</button>
+            </div>
             <table class="table">
                 <thead>
                     <tr><th>型番（昇順）</th><th>数量</th><th>操作</th></tr>
@@ -72,9 +75,10 @@
                     tr.innerHTML = `
                         <td>${model}</td>
                         <td>${qty}</td>
-                        <td>
+                        <td style="display:flex; gap:6px;">
                             <button class="btn" data-action="dec" data-model="${model}">-</button>
                             <button class="btn btn--primary" data-action="inc" data-model="${model}">+</button>
+                            <button class="btn btn--danger" data-action="del" data-model="${model}">削除</button>
                         </td>
                     `;
                     tbody.appendChild(tr);
@@ -87,6 +91,22 @@
                 counts[model] = next;
                 saveCounts(counts);
                 addHistory(model, delta);
+                if (window.showToast) window.showToast(`${model} を${delta > 0 ? '+' : ''}${delta}`);
+                render();
+            }
+            function deleteModel(model) {
+                const counts = loadCounts();
+                if (!(model in counts)) return;
+                if (!confirm(`${model} を削除しますか？`)) return;
+                delete counts[model];
+                saveCounts(counts);
+                if (window.showToast) window.showToast(`${model} を削除しました`);
+                render();
+            }
+            function deleteAll() {
+                if (!confirm('全レコードを削除しますか？')) return;
+                localStorage.setItem(KEY_COUNTS, JSON.stringify({}));
+                if (window.showToast) window.showToast('全レコードを削除しました');
                 render();
             }
 
@@ -98,7 +118,9 @@
                 if (!action || !model) return;
                 if (action === 'inc') changeQuantity(model, +1);
                 if (action === 'dec') changeQuantity(model, -1);
+                if (action === 'del') deleteModel(model);
             });
+            document.getElementById('btn-delete-all').addEventListener('click', deleteAll);
 
             render();
         });
