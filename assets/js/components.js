@@ -70,8 +70,19 @@
         osc.stop(now + durationSec);
     };
 
-    // Vibration API 対応可否
+    // Vibration API 対応可否（参考サイトの実装に合わせて修正）
     window.isVibrateSupported = function() {
         return typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+    };
+    
+    // バイブレーション実行関数（参考サイトの実装に合わせて修正）
+    window.vibrate = function(pattern) {
+        if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
+            try {
+                navigator.vibrate(pattern);
+            } catch (error) {
+                console.warn('Vibration failed:', error);
+            }
+        }
     };
 })(); 

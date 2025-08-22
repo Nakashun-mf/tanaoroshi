@@ -44,7 +44,7 @@
             function loadSettings() {
                 const defaults = { extraction: { startIndex: 49 }, scan: { cooldownMs: 100, beep: true, vibrate: true } };
                 const s = JSON.parse(localStorage.getItem(KEY_SETTINGS) || 'null') || defaults;
-                const vibrateSupported = window.isVibrateSupported && window.isVibrateSupported();
+                const vibrateSupported = window.vibrate && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
                 document.getElementById('startIndex').value = s.extraction?.startIndex ?? 49;
                 document.getElementById('cooldownMs').value = s.scan?.cooldownMs ?? 100;
                 document.getElementById('beep').checked = s.scan?.beep ?? true;
@@ -70,7 +70,7 @@
                     scan: { 
                         cooldownMs, 
                         beep: document.getElementById('beep').checked, 
-                        vibrate: (window.isVibrateSupported && window.isVibrateSupported()) ? document.getElementById('vibrate').checked : false 
+                        vibrate: (window.vibrate && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') ? document.getElementById('vibrate').checked : false 
                     }
                 };
                 localStorage.setItem('inventory.settings', JSON.stringify(settings));
