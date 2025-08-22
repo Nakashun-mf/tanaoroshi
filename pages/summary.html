@@ -26,7 +26,11 @@
         </section>
         <!-- 一覧テーブルを追加 -->
         <section class="list">
-            <div class="actions" style="margin: 8px 0; display: flex; gap: 8px;">
+            <div class="actions" style="margin: 8px 0; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <div style="display: flex; gap: 6px; align-items: center;">
+                    <input type="text" id="new-model-input" placeholder="型番を入力" style="padding: 8px 12px; border: 1px solid #E5E7EB; border-radius: 6px; min-width: 120px;">
+                    <button class="btn btn--primary" id="btn-add-model">追加</button>
+                </div>
                 <button class="btn btn--danger" id="btn-delete-all">全削除</button>
             </div>
             <table class="table">
@@ -103,6 +107,36 @@
                 if (window.showToast) window.showToast(`${model} を削除しました`);
                 render();
             }
+            function addModel() {
+                const input = document.getElementById('new-model-input');
+                const model = input.value.trim();
+                
+                if (!model) {
+                    if (window.showToast) window.showToast('型番を入力してください', { error: true });
+                    return;
+                }
+                
+                if (model.length > 256) {
+                    if (window.showToast) window.showToast('型番が長すぎます（256文字以内）', { error: true });
+                    return;
+                }
+                
+                const counts = loadCounts();
+                if (model in counts) {
+                    if (window.showToast) window.showToast('既に存在する型番です', { error: true });
+                    return;
+                }
+                
+                // 新規追加（数量0で開始）
+                counts[model] = 0;
+                saveCounts(counts);
+                addHistory(model, 0); // 履歴に追加（delta: 0で新規追加を示す）
+                
+                if (window.showToast) window.showToast(`${model} を追加しました`);
+                input.value = ''; // 入力フィールドをクリア
+                render();
+            }
+            
             function deleteAll() {
                 if (!confirm('全レコードを削除しますか？')) return;
                 localStorage.setItem(KEY_COUNTS, JSON.stringify({}));
@@ -121,6 +155,15 @@
                 if (action === 'del') deleteModel(model);
             });
             document.getElementById('btn-delete-all').addEventListener('click', deleteAll);
+            document.getElementById('btn-add-model').addEventListener('click', addModel);
+            
+            // Enterキーでも追加できるように
+            document.getElementById('new-model-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    addModel();
+                }
+            });
 
             render();
         });

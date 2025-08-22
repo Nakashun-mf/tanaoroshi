@@ -101,7 +101,7 @@
     }
 
     function loadSettings() {
-        const defaults = { extraction: { startIndex: 50 }, scan: { cooldownMs: 100, beep: true, vibrate: true } };
+        const defaults = { extraction: { startIndex: 49 }, scan: { cooldownMs: 100, beep: true, vibrate: true } };
         try { return JSON.parse(localStorage.getItem(KEY_SETTINGS) || 'null') || defaults; } catch (_) { return defaults; }
     }
 
