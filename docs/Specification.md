@@ -37,7 +37,7 @@
 
 #### 5.3 設定
 - 抽出方式: 開始位置（N）のみ（初期値 49、入力制約: 0〜500の整数）。
-- スキャン挙動: 重複クールダウン(ms) 初期値 100（入力制約: 50〜2000の整数, 1刻み）、ビープ音 ON、バイブ ON。
+- スキャン挙動: 重複クールダウン(ms) 初期値 1800（入力制約: 50〜2000の整数, 1刻み）、ビープ音 ON、バイブ ON。
 - データ: CSVエクスポート、全消去（確認ダイアログ）、設定のリセット（初期化）。
 - 永続化: すべて localStorage に保存（キーは 6. データ仕様参照）。
 
@@ -246,7 +246,7 @@ project-root/
 ```json
 {
     "extraction": { "startIndex": 49 },
-    "scan": { "cooldownMs": 100, "beep": true, "vibrate": true },
+    "scan": { "cooldownMs": 1800, "beep": true, "vibrate": true },
     "camera": { "deviceId": "", "resolution": "hd" },
     "ui": { "theme": "system" }
 }

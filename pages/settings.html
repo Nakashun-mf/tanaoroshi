@@ -31,7 +31,6 @@
                 <button type="submit" class="btn btn--primary">保存</button>
                 <button type="button" id="btn-reset" class="btn">設定のリセット</button>
                 <button type="button" id="btn-clear" class="btn btn--danger">データ全消去</button>
-                <button type="button" id="btn-export" class="btn btn--secondary">CSV出力</button>
             </div>
         </form>
     </main>
@@ -42,11 +41,20 @@
         (function() {
             const KEY_SETTINGS = 'inventory.settings';
             function loadSettings() {
-                const defaults = { extraction: { startIndex: 49 }, scan: { cooldownMs: 100, beep: true, vibrate: true } };
+                const defaults = { extraction: { startIndex: 49 }, scan: { cooldownMs: 1800, beep: true, vibrate: true } };
                 const s = JSON.parse(localStorage.getItem(KEY_SETTINGS) || 'null') || defaults;
-                const vibrateSupported = window.vibrate && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function';
+                const vibrateSupported = window.isVibrateSupported && window.isVibrateSupported();
+                
+                console.log('バイブレーション対応確認:', {
+                    windowVibrate: !!window.vibrate,
+                    isVibrateSupported: !!window.isVibrateSupported,
+                    navigatorExists: typeof navigator !== 'undefined',
+                    vibrateFunction: typeof navigator?.vibrate,
+                    supported: vibrateSupported
+                });
+                
                 document.getElementById('startIndex').value = s.extraction?.startIndex ?? 49;
-                document.getElementById('cooldownMs').value = s.scan?.cooldownMs ?? 100;
+                document.getElementById('cooldownMs').value = s.scan?.cooldownMs ?? 1800;
                 document.getElementById('beep').checked = s.scan?.beep ?? true;
                 document.getElementById('vibrate').checked = vibrateSupported ? (s.scan?.vibrate ?? true) : false;
                 const vibrateInput = document.getElementById('vibrate');
@@ -57,6 +65,11 @@
                         vibrateLabel.title = 'この端末はバイブに非対応です';
                         vibrateLabel.style.opacity = '0.6';
                     }
+                }
+                
+                // デバッグ用：コンソールでテスト可能にする
+                if (window.testVibration) {
+                    console.log('バイブレーションテスト: window.testVibration() を実行してください');
                 }
             }
             function saveSettings(e) {
@@ -70,7 +83,7 @@
                     scan: { 
                         cooldownMs, 
                         beep: document.getElementById('beep').checked, 
-                        vibrate: (window.vibrate && typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') ? document.getElementById('vibrate').checked : false 
+                        vibrate: (window.isVibrateSupported && window.isVibrateSupported()) ? document.getElementById('vibrate').checked : false 
                     }
                 };
                 localStorage.setItem('inventory.settings', JSON.stringify(settings));
@@ -87,40 +100,13 @@
                 localStorage.removeItem('inventory.history');
                 alert('削除しました');
             }
-            function exportCsv() {
-                try {
-                    const counts = JSON.parse(localStorage.getItem('inventory.counts') || '{}');
-                    const rows = Object.keys(counts).sort((a, b) => a.localeCompare(b)).map(model => ({ model, quantity: counts[model] }));
-                    const header = 'model,quantity\n';
-                    const csvBody = rows.map(r => {
-                        const escape = (v) => {
-                            const s = String(v);
-                            if (s.includes('"') || s.includes(',') || s.includes('\n')) {
-                                return '"' + s.replaceAll('"', '""') + '"';
-                            }
-                            return s;
-                        };
-                        return `${escape(r.model)},${escape(r.quantity)}`;
-                    }).join('\n');
-                    const csv = header + csvBody + '\n';
-                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-                    const a = document.createElement('a');
-                    const now = new Date();
-                    const y = now.getFullYear();
-                    const m = String(now.getMonth() + 1).padStart(2, '0');
-                    const d = String(now.getDate()).padStart(2, '0');
-                    a.href = URL.createObjectURL(blob);
-                    a.download = `inventory_${y}${m}${d}.csv`;
-                    a.click();
-                    URL.revokeObjectURL(a.href);
-                } catch (_) {}
-            }
+            // CSV出力機能は一覧画面に移動
             document.addEventListener('DOMContentLoaded', () => {
                 loadSettings();
                 document.getElementById('settings-form').addEventListener('submit', saveSettings);
                 document.getElementById('btn-reset').addEventListener('click', resetSettings);
                 document.getElementById('btn-clear').addEventListener('click', clearData);
-                document.getElementById('btn-export').addEventListener('click', exportCsv);
+                // CSV出力ボタンのイベントリスナーは削除（一覧画面に移動）
             });
         })();
     </script>

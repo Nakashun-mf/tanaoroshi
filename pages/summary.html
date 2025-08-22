@@ -39,6 +39,9 @@
                 </thead>
                 <tbody id="list-body"></tbody>
             </table>
+            <div class="actions" style="margin-top: 16px; display: flex; gap: 8px; justify-content: center;">
+                <button class="btn btn--secondary" id="btn-export">CSV出力</button>
+            </div>
         </section>
     </main>
     <footer id="footer"></footer>
@@ -137,6 +140,39 @@
                 render();
             }
             
+            function exportCsv() {
+                try {
+                    const counts = loadCounts();
+                    const rows = Object.keys(counts).sort((a, b) => a.localeCompare(b)).map(model => ({ model, quantity: counts[model] }));
+                    const header = 'model,quantity\n';
+                    const csvBody = rows.map(r => {
+                        const escape = (v) => {
+                            const s = String(v);
+                            if (s.includes('"') || s.includes(',') || s.includes('\n')) {
+                                return '"' + s.replaceAll('"', '""') + '"';
+                            }
+                            return s;
+                        };
+                        return `${escape(r.model)},${escape(r.quantity)}`;
+                    }).join('\n');
+                    const csv = header + csvBody + '\n';
+                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                    const a = document.createElement('a');
+                    const now = new Date();
+                    const y = now.getFullYear();
+                    const m = String(now.getMonth() + 1).padStart(2, '0');
+                    const d = String(now.getDate()).padStart(2, '0');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `inventory_${y}${m}${d}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                    if (window.showToast) window.showToast('CSVを出力しました');
+                } catch (error) {
+                    console.error('CSV出力エラー:', error);
+                    if (window.showToast) window.showToast('CSV出力に失敗しました', { error: true });
+                }
+            }
+            
             function deleteAll() {
                 if (!confirm('全レコードを削除しますか？')) return;
                 localStorage.setItem(KEY_COUNTS, JSON.stringify({}));
@@ -156,6 +192,7 @@
             });
             document.getElementById('btn-delete-all').addEventListener('click', deleteAll);
             document.getElementById('btn-add-model').addEventListener('click', addModel);
+            document.getElementById('btn-export').addEventListener('click', exportCsv);
             
             // Enterキーでも追加できるように
             document.getElementById('new-model-input').addEventListener('keydown', (e) => {

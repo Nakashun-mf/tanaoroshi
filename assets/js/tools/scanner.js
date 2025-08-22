@@ -22,8 +22,13 @@
     function canCountNow(model, cooldownMs) {
         const now = Date.now();
         const last = lastScanByModel[model] || 0;
-        if (now - last < cooldownMs) return false;
+        const timeDiff = now - last;
+        if (timeDiff < cooldownMs) {
+            console.log(`クールダウン制御: ${model} - 前回: ${last}, 現在: ${now}, 差分: ${timeDiff}ms, 必要: ${cooldownMs}ms`);
+            return false;
+        }
         lastScanByModel[model] = now;
+        console.log(`カウント許可: ${model} - 前回: ${last}, 現在: ${now}, 差分: ${timeDiff}ms`);
         return true;
     }
 
@@ -101,7 +106,7 @@
     }
 
     function loadSettings() {
-        const defaults = { extraction: { startIndex: 49 }, scan: { cooldownMs: 100, beep: true, vibrate: true } };
+        const defaults = { extraction: { startIndex: 49 }, scan: { cooldownMs: 1800, beep: true, vibrate: true } };
         try { return JSON.parse(localStorage.getItem(KEY_SETTINGS) || 'null') || defaults; } catch (_) { return defaults; }
     }
 
@@ -124,8 +129,28 @@
 
     let lastTs = 0;
     function maybeBeepVibrate(settings) {
-        try { if (settings.scan?.beep && window.beep) window.beep(1200, 0.06, 0.05); } catch(_){ }
-        try { if (settings.scan?.vibrate && window.vibrate) window.vibrate(30); } catch(_){ }
+        try { 
+            if (settings.scan?.beep && window.beep) {
+                console.log('ビープ音再生');
+                window.beep(1200, 0.06, 0.05); 
+            }
+        } catch(error){ 
+            console.warn('ビープ音再生失敗:', error);
+        }
+        
+        // バイブレーション処理を改善
+        if (settings.scan?.vibrate) {
+            console.log('バイブレーション設定: ON');
+            if (window.isVibrateSupported && window.isVibrateSupported()) {
+                console.log('バイブレーション実行');
+                const result = window.vibrate(30);
+                console.log('バイブレーション実行結果:', result);
+            } else {
+                console.log('バイブレーション非対応または無効');
+            }
+        } else {
+            console.log('バイブレーション設定: OFF');
+        }
     }
 
     function loopDecode() {
@@ -156,12 +181,13 @@
                     const result = jsQR(imageData.data, cw, ch, { inversionAttempts: 'dontInvert' });
                     if (result && result.data) {
                         const raw = String(result.data);
-                        const n = settings.extraction?.startIndex ?? 50;
+                        const n = settings.extraction?.startIndex ?? 49;
                         const model = (raw || '').slice(n).trim();
-                        const cooldown = settings.scan?.cooldownMs ?? 100;
+                        const cooldown = settings.scan?.cooldownMs ?? 1800;
                         if (model) {
                             if (!canCountNow(model, cooldown)) {
                                 // 同一型番のクールダウン中は無視
+                                console.log(`クールダウン中: ${model} (${cooldown}ms)`);
                             } else {
                                 incCount(model, +1, raw);
                                 maybeBeepVibrate(settings);
@@ -195,23 +221,24 @@
                     const imageData = ctx.getImageData(0, 0, cw, ch);
                     const result = jsQR(imageData.data, cw, ch, { inversionAttempts: 'dontInvert' });
                     if (result && result.data) {
-                        const raw = String(result.data);
-                        const n = settings.extraction?.startIndex ?? 50;
-                        const model = (raw || '').slice(n).trim();
-                        const cooldown = settings.scan?.cooldownMs ?? 100;
-                        if (model) {
-                            if (!canCountNow(model, cooldown)) {
-                                // 同一型番のクールダウン中は無視
-                            } else {
-                                incCount(model, +1, raw);
-                                maybeBeepVibrate(settings);
-                                statusEl.textContent = `${model} を+1（画像）`;
-                                if (window.showToast) window.showToast(`${model} を+1（画像）`);
-                            }
+                                            const raw = String(result.data);
+                    const n = settings.extraction?.startIndex ?? 49;
+                    const model = (raw || '').slice(n).trim();
+                    const cooldown = settings.scan?.cooldownMs ?? 1800;
+                    if (model) {
+                        if (!canCountNow(model, cooldown)) {
+                            // 同一型番のクールダウン中は無視
+                            console.log(`クールダウン中: ${model} (${cooldown}ms)`);
                         } else {
-                            statusEl.textContent = '抽出結果が空（開始位置を見直してください）';
-                            if (window.showToast) window.showToast('抽出結果が空', { error: true });
+                            incCount(model, +1, raw);
+                            maybeBeepVibrate(settings);
+                            statusEl.textContent = `${model} を+1（画像）`;
+                            if (window.showToast) window.showToast(`${model} を+1（画像）`);
                         }
+                    } else {
+                        statusEl.textContent = '抽出結果が空（開始位置を見直してください）';
+                        if (window.showToast) window.showToast('抽出結果が空', { error: true });
+                    }
                     } else {
                         statusEl.textContent = '画像からQRを検出できませんでした';
                         if (window.showToast) window.showToast('画像からQRを検出できませんでした', { error: true });
@@ -236,12 +263,13 @@
                 const settings = loadSettings();
                 const raw = prompt('デバッグ用: QR RAW を入力してください');
                 if (raw != null) {
-                    const n = settings.extraction?.startIndex ?? 50;
+                    const n = settings.extraction?.startIndex ?? 49;
                     const model = (raw || '').slice(n).trim();
-                    const cooldown = settings.scan?.cooldownMs ?? 100;
+                    const cooldown = settings.scan?.cooldownMs ?? 1800;
                     if (model) {
                         if (!canCountNow(model, cooldown)) {
                             // 同一型番のクールダウン中は無視
+                            console.log(`クールダウン中: ${model} (${cooldown}ms)`);
                         } else {
                             incCount(model, +1, raw);
                             maybeBeepVibrate(settings);

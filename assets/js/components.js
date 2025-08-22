@@ -79,10 +79,31 @@
     window.vibrate = function(pattern) {
         if (typeof navigator !== 'undefined' && typeof navigator.vibrate === 'function') {
             try {
-                navigator.vibrate(pattern);
+                console.log('Vibration API 呼び出し:', pattern);
+                const result = navigator.vibrate(pattern);
+                console.log('Vibration API 結果:', result);
+                return result;
             } catch (error) {
                 console.warn('Vibration failed:', error);
+                return false;
             }
+        } else {
+            console.warn('Vibration API not supported');
+            return false;
+        }
+    };
+    
+    // バイブレーションテスト関数（デバッグ用）
+    window.testVibration = function() {
+        console.log('Vibration API テスト開始');
+        console.log('navigator:', typeof navigator);
+        console.log('navigator.vibrate:', typeof navigator?.vibrate);
+        console.log('isVibrateSupported:', window.isVibrateSupported());
+        
+        if (window.isVibrateSupported()) {
+            console.log('短い振動テスト（100ms）');
+            const result = window.vibrate(100);
+            console.log('テスト結果:', result);
         }
     };
 })(); 
