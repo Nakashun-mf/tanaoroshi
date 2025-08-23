@@ -5,6 +5,10 @@
 .page--scan .scanner { display: grid; gap: 12px; }
 .page--scan .scanner__fallback { margin-top: 8px; }
 
+/* カードエリアの下の余白を増やす */
+.page--scan .cards { margin-bottom: 24px; }
+.page--summary .cards { margin-bottom: 24px; }
+
 /* PC用の左右分割レイアウト */
 @media (min-width: 769px) {
     .page--scan .scan-layout {
