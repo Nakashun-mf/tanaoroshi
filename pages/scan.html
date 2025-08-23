@@ -15,28 +15,73 @@
 <body>
     <header id="header"></header>
     <main class="page page--scan">
-        <section class="scanner">
-            <div class="scanner__video-wrap">
-                <video id="preview" class="scanner__video" playsinline></video>
-                <div class="scanner__guide"></div>
-            </div>
-            <div id="status" class="scanner__status">読み取り中...</div>
-            <div class="scanner__actions">
-                <button class="btn btn--primary" id="btn-toggle">停止</button>
-                <button class="btn" id="btn-switch">カメラ切替</button>
-            </div>
-        </section>
-        <section class="list">
-            <table class="table">
-                <thead>
-                    <tr><th>型番（昇順）</th><th>数量</th></tr>
-                </thead>
-                <tbody id="scan-list-body"></tbody>
-            </table>
-        </section>
-        <section class="scanner__fallback">
-            <input type="file" id="file-input" accept="image/*" class="input input--file">
-        </section>
+        <div class="scan-layout">
+            <!-- 左側: カメラエリア -->
+            <section class="scanner">
+                <div class="scanner__video-wrap">
+                    <video id="preview" class="scanner__video" playsinline></video>
+                    <div class="scanner__guide"></div>
+                </div>
+                <div id="status" class="scanner__status">読み取り中...</div>
+                <div class="scanner__actions">
+                    <button class="btn btn--primary" id="btn-toggle">停止</button>
+                    <button class="btn" id="btn-switch">カメラ切替</button>
+                </div>
+                <div class="scanner__fallback">
+                    <input type="file" id="file-input" accept="image/*" class="input input--file">
+                </div>
+            </section>
+
+            <!-- 右側: 一覧表示・編集エリア -->
+            <section class="summary-panel">
+                <!-- PC用の詳細表示 -->
+                <div class="summary-panel__desktop">
+                    <section class="cards">
+                        <div class="card card--metric">
+                            <div class="card__title">総型番数</div>
+                            <div class="card__value" id="metric-models">0</div>
+                        </div>
+                        <div class="card card--metric">
+                            <div class="card__title">合計数量</div>
+                            <div class="card__value" id="metric-quantity">0</div>
+                        </div>
+                    </section>
+                    
+                    <section class="list">
+                        <div class="actions">
+                            <div class="input-group">
+                                <input type="text" id="new-model-input" placeholder="型番を入力" class="input">
+                                <button class="btn btn--primary btn--input-height" id="btn-add-model">追加</button>
+                            </div>
+                            <button class="btn btn--danger btn--input-height" id="btn-delete-all">全削除</button>
+                        </div>
+                        
+                        <table class="table">
+                            <thead>
+                                <tr><th>型番（昇順）</th><th>数量</th><th>操作</th></tr>
+                            </thead>
+                            <tbody id="list-body"></tbody>
+                        </table>
+                        
+                        <div class="actions">
+                            <button class="btn btn--secondary" id="btn-export">CSV出力</button>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- スマホ用のシンプル表示 -->
+                <div class="summary-panel__mobile">
+                    <section class="list">
+                        <table class="table">
+                            <thead>
+                                <tr><th>型番（昇順）</th><th>数量</th></tr>
+                            </thead>
+                            <tbody id="scan-list-body"></tbody>
+                        </table>
+                    </section>
+                </div>
+            </section>
+        </div>
     </main>
     <footer id="footer"></footer>
     <script src="../assets/js/common.js"></script>
@@ -45,8 +90,50 @@
     <script>
         (function() {
             const KEY_COUNTS = 'inventory.counts';
-            function loadCounts() { try { return JSON.parse(localStorage.getItem(KEY_COUNTS) || '{}'); } catch (_) { return {}; } }
-            function renderList() {
+            const KEY_HISTORY = 'inventory.history';
+            const HISTORY_LIMIT = 1000;
+
+            function loadCounts() {
+                try { return JSON.parse(localStorage.getItem(KEY_COUNTS) || '{}'); } catch (_) { return {}; }
+            }
+            function saveCounts(counts) {
+                localStorage.setItem(KEY_COUNTS, JSON.stringify(counts));
+            }
+            function addHistory(model, delta) {
+                const arr = JSON.parse(localStorage.getItem(KEY_HISTORY) || '[]');
+                arr.push({ ts: Date.now(), model, delta, raw: '' });
+                localStorage.setItem(KEY_HISTORY, JSON.stringify(arr.slice(-HISTORY_LIMIT)));
+            }
+            function updateMetrics(counts) {
+                const models = Object.keys(counts);
+                const total = models.reduce((sum, m) => sum + (parseInt(counts[m], 10) || 0), 0);
+                document.getElementById('metric-models').textContent = String(models.length);
+                document.getElementById('metric-quantity').textContent = String(total);
+            }
+            function render() {
+                const counts = loadCounts();
+                updateMetrics(counts);
+                const tbody = document.getElementById('list-body');
+                tbody.innerHTML = '';
+                const models = Object.keys(counts).sort((a, b) => a.localeCompare(b));
+                models.forEach(model => {
+                    const qty = parseInt(counts[model], 10) || 0;
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${model}</td>
+                        <td>${qty}</td>
+                        <td class="table-actions">
+                            <button class="btn" data-action="dec" data-model="${model}">-</button>
+                            <button class="btn btn--primary" data-action="inc" data-model="${model}">+</button>
+                            <button class="btn btn--danger" data-action="del" data-model="${model}">削除</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // スマホ用のシンプル表示
+            function renderSimple() {
                 const counts = loadCounts();
                 const tbody = document.getElementById('scan-list-body');
                 tbody.innerHTML = '';
@@ -56,8 +143,142 @@
                     tbody.appendChild(tr);
                 });
             }
-            document.addEventListener('DOMContentLoaded', renderList);
-            window.addEventListener('counts:updated', renderList);
+            function changeQuantity(model, delta) {
+                const counts = loadCounts();
+                const current = parseInt(counts[model] || '0', 10) || 0;
+                const next = Math.max(0, Math.min(999999, current + delta));
+                counts[model] = next;
+                saveCounts(counts);
+                addHistory(model, delta);
+                if (window.showToast) window.showToast(`${model} を${delta > 0 ? '+' : ''}${delta}`);
+                render();
+            }
+            function deleteModel(model) {
+                const counts = loadCounts();
+                if (!(model in counts)) return;
+                if (!confirm(`${model} を削除しますか？`)) return;
+                delete counts[model];
+                saveCounts(counts);
+                if (window.showToast) window.showToast(`${model} を削除しました`);
+                render();
+            }
+            function addModel() {
+                const input = document.getElementById('new-model-input');
+                const model = input.value.trim();
+                
+                if (!model) {
+                    if (window.showToast) window.showToast('型番を入力してください', { error: true });
+                    return;
+                }
+                
+                const counts = loadCounts();
+                if (model in counts) {
+                    if (window.showToast) window.showToast('既に存在する型番です', { error: true });
+                    return;
+                }
+                
+                counts[model] = 0;
+                saveCounts(counts);
+                addHistory(model, 0);
+                input.value = '';
+                if (window.showToast) window.showToast(`${model} を追加しました`);
+                render();
+            }
+            function deleteAll() {
+                if (!confirm('すべての型番を削除しますか？')) return;
+                localStorage.removeItem(KEY_COUNTS);
+                if (window.showToast) window.showToast('すべての型番を削除しました');
+                render();
+            }
+            function exportCSV() {
+                try {
+                    const counts = loadCounts();
+                    const rows = Object.keys(counts).sort((a, b) => a.localeCompare(b)).map(model => ({ model, quantity: counts[model] }));
+                    const header = 'model,quantity\n';
+                    const csvBody = rows.map(r => {
+                        const escape = (v) => {
+                            const s = String(v);
+                            if (s.includes('"') || s.includes(',') || s.includes('\n')) {
+                                return '"' + s.replaceAll('"', '""') + '"';
+                            }
+                            return s;
+                        };
+                        return `${escape(r.model)},${escape(r.quantity)}`;
+                    }).join('\n');
+                    const csv = header + csvBody + '\n';
+                    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+                    const a = document.createElement('a');
+                    const now = new Date();
+                    const y = now.getFullYear();
+                    const m = String(now.getMonth() + 1).padStart(2, '0');
+                    const d = String(now.getDate()).padStart(2, '0');
+                    a.href = URL.createObjectURL(blob);
+                    a.download = `inventory_${y}${m}${d}.csv`;
+                    a.click();
+                    URL.revokeObjectURL(a.href);
+                    if (window.showToast) window.showToast('CSVファイルをダウンロードしました');
+                } catch (_) {
+                    if (window.showToast) window.showToast('CSV出力に失敗しました', { error: true });
+                }
+            }
+
+            // イベントリスナーの設定
+            document.addEventListener('DOMContentLoaded', () => {
+                // 画面サイズに応じて表示を切り替え
+                function updateDisplay() {
+                    const isDesktop = window.innerWidth >= 769;
+                    const desktopEl = document.querySelector('.summary-panel__desktop');
+                    const mobileEl = document.querySelector('.summary-panel__mobile');
+                    
+                    if (isDesktop) {
+                        desktopEl.style.display = 'block';
+                        mobileEl.style.display = 'none';
+                        render(); // PC用の詳細表示を更新
+                    } else {
+                        desktopEl.style.display = 'none';
+                        mobileEl.style.display = 'block';
+                        renderSimple(); // スマホ用のシンプル表示を更新
+                    }
+                }
+
+                // 初期表示
+                updateDisplay();
+                
+                // リサイズ時の表示切り替え
+                window.addEventListener('resize', updateDisplay);
+                
+                // 数量変更ボタン
+                document.addEventListener('click', (e) => {
+                    if (e.target.dataset.action === 'inc') {
+                        changeQuantity(e.target.dataset.model, 1);
+                    } else if (e.target.dataset.action === 'dec') {
+                        changeQuantity(e.target.dataset.model, -1);
+                    } else if (e.target.dataset.action === 'del') {
+                        deleteModel(e.target.dataset.model);
+                    }
+                });
+                
+                // 型番追加
+                document.getElementById('btn-add-model').addEventListener('click', addModel);
+                document.getElementById('new-model-input').addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') addModel();
+                });
+                
+                // 全削除
+                document.getElementById('btn-delete-all').addEventListener('click', deleteAll);
+                
+                // CSV出力
+                document.getElementById('btn-export').addEventListener('click', exportCSV);
+            });
+
+            // スキャン結果の更新イベント
+            window.addEventListener('counts:updated', () => {
+                if (window.innerWidth >= 769) {
+                    render(); // PC用
+                } else {
+                    renderSimple(); // スマホ用
+                }
+            });
         })();
     </script>
 </body>
