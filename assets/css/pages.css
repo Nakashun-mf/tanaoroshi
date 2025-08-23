@@ -5,6 +5,34 @@
 .page--scan .scanner { display: grid; gap: 12px; }
 .page--scan .scanner__fallback { margin-top: 8px; }
 
+/* PC用の左右分割レイアウト */
+@media (min-width: 769px) {
+    .page--scan .scan-layout {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 24px;
+        align-items: start;
+    }
+    
+    .page--scan .scanner {
+        position: sticky;
+        top: 80px;
+    }
+    
+    .page--scan .summary-panel {
+        min-height: 100vh;
+    }
+}
+
+/* モバイル用の縦並びレイアウト */
+@media (max-width: 768px) {
+    .page--scan .scan-layout {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+    }
+}
+
 /* Settings */
 .page--settings .form--settings { max-width: 480px; margin: 0 auto; }
 

@@ -21,10 +21,33 @@
 .form__switch { display: block; margin-top: 8px; }
 .form__actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 
+/* Input Group */
+.input-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.input-group .input {
+    flex: 1;
+    min-width: 120px;
+}
+
 /* Table */
 .table { width: 100%; border-collapse: collapse; background: #FFFFFF; }
 .table th, .table td { padding: 10px 8px; border-bottom: 1px solid #E5E7EB; font-size: 0.95rem; }
 .table thead th { color: #6C757D; text-align: left; }
+
+.table-actions {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.table-actions .btn {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+}
 
 /* Header/Footer/Nav */
 .header { position: sticky; top: 0; background: #FFFFFF; border-bottom: 1px solid #E5E7EB; padding: 10px 16px; z-index: 40; }
