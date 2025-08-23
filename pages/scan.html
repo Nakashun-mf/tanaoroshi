@@ -34,37 +34,52 @@
 
             <!-- 右側: 一覧表示・編集エリア -->
             <section class="summary-panel">
-                <section class="cards">
-                    <div class="card card--metric">
-                        <div class="card__title">総型番数</div>
-                        <div class="card__value" id="metric-models">0</div>
-                    </div>
-                    <div class="card card--metric">
-                        <div class="card__title">合計数量</div>
-                        <div class="card__value" id="metric-quantity">0</div>
-                    </div>
-                </section>
-                
-                <section class="list">
-                    <div class="actions">
-                        <div class="input-group">
-                            <input type="text" id="new-model-input" placeholder="型番を入力" class="input">
-                            <button class="btn btn--primary" id="btn-add-model">追加</button>
+                <!-- PC用の詳細表示 -->
+                <div class="summary-panel__desktop">
+                    <section class="cards">
+                        <div class="card card--metric">
+                            <div class="card__title">総型番数</div>
+                            <div class="card__value" id="metric-models">0</div>
                         </div>
-                        <button class="btn btn--danger" id="btn-delete-all">全削除</button>
-                    </div>
+                        <div class="card card--metric">
+                            <div class="card__title">合計数量</div>
+                            <div class="card__value" id="metric-quantity">0</div>
+                        </div>
+                    </section>
                     
-                    <table class="table">
-                        <thead>
-                            <tr><th>型番（昇順）</th><th>数量</th><th>操作</th></tr>
-                        </thead>
-                        <tbody id="list-body"></tbody>
-                    </table>
-                    
-                    <div class="actions">
-                        <button class="btn btn--secondary" id="btn-export">CSV出力</button>
-                    </div>
-                </section>
+                    <section class="list">
+                        <div class="actions">
+                            <div class="input-group">
+                                <input type="text" id="new-model-input" placeholder="型番を入力" class="input">
+                                <button class="btn btn--primary" id="btn-add-model">追加</button>
+                            </div>
+                            <button class="btn btn--danger" id="btn-delete-all">全削除</button>
+                        </div>
+                        
+                        <table class="table">
+                            <thead>
+                                <tr><th>型番（昇順）</th><th>数量</th><th>操作</th></tr>
+                            </thead>
+                            <tbody id="list-body"></tbody>
+                        </table>
+                        
+                        <div class="actions">
+                            <button class="btn btn--secondary" id="btn-export">CSV出力</button>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- スマホ用のシンプル表示 -->
+                <div class="summary-panel__mobile">
+                    <section class="list">
+                        <table class="table">
+                            <thead>
+                                <tr><th>型番（昇順）</th><th>数量</th></tr>
+                            </thead>
+                            <tbody id="scan-list-body"></tbody>
+                        </table>
+                    </section>
+                </div>
             </section>
         </div>
     </main>
@@ -113,6 +128,18 @@
                             <button class="btn btn--danger" data-action="del" data-model="${model}">削除</button>
                         </td>
                     `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            // スマホ用のシンプル表示
+            function renderSimple() {
+                const counts = loadCounts();
+                const tbody = document.getElementById('scan-list-body');
+                tbody.innerHTML = '';
+                Object.keys(counts).sort((a, b) => a.localeCompare(b)).forEach(model => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `<td>${model}</td><td>${parseInt(counts[model], 10) || 0}</td>`;
                     tbody.appendChild(tr);
                 });
             }
@@ -197,7 +224,28 @@
 
             // イベントリスナーの設定
             document.addEventListener('DOMContentLoaded', () => {
-                render();
+                // 画面サイズに応じて表示を切り替え
+                function updateDisplay() {
+                    const isDesktop = window.innerWidth >= 769;
+                    const desktopEl = document.querySelector('.summary-panel__desktop');
+                    const mobileEl = document.querySelector('.summary-panel__mobile');
+                    
+                    if (isDesktop) {
+                        desktopEl.style.display = 'block';
+                        mobileEl.style.display = 'none';
+                        render(); // PC用の詳細表示を更新
+                    } else {
+                        desktopEl.style.display = 'none';
+                        mobileEl.style.display = 'block';
+                        renderSimple(); // スマホ用のシンプル表示を更新
+                    }
+                }
+
+                // 初期表示
+                updateDisplay();
+                
+                // リサイズ時の表示切り替え
+                window.addEventListener('resize', updateDisplay);
                 
                 // 数量変更ボタン
                 document.addEventListener('click', (e) => {
@@ -224,7 +272,13 @@
             });
 
             // スキャン結果の更新イベント
-            window.addEventListener('counts:updated', render);
+            window.addEventListener('counts:updated', () => {
+                if (window.innerWidth >= 769) {
+                    render(); // PC用
+                } else {
+                    renderSimple(); // スマホ用
+                }
+            });
         })();
     </script>
 </body>
