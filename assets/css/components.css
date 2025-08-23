@@ -6,6 +6,16 @@
 .btn--secondary { border-color: #6C757D; color: #6C757D; }
 .btn--danger { border-color: #DC3545; color: #FFFFFF; background: #DC3545; }
 
+/* 入力ボックスと同じ高さのボタン */
+.btn--input-height {
+    padding: 10px 14px;
+    height: 42px; /* 入力ボックスの高さに合わせる */
+    box-sizing: border-box;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* Card */
 .card { background: #FFFFFF; border: 1px solid #E5E7EB; border-radius: 8px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
 .card--metric { text-align: center; }
