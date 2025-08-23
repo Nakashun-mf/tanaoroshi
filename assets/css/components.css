@@ -57,6 +57,18 @@
 .nav__link { color: #0056B3; text-decoration: none; padding: 8px; border-radius: 6px; }
 .nav__link:hover { background: rgba(0,86,179,0.08); }
 
+/* レスポンシブ対応: PCでは一覧リンクを非表示、ナビゲーションを左寄せ */
+@media (min-width: 769px) {
+    .nav__link--mobile {
+        display: none;
+    }
+    
+    .nav {
+        justify-content: flex-start;
+        gap: 16px;
+    }
+}
+
 /* Scanner */
 .scanner__video-wrap { 
     position: relative; 
