@@ -41,8 +41,8 @@
     border-radius: 8px; 
     overflow: hidden; 
     aspect-ratio: 1; /* 正方形に制限 */
-    max-height: 80vh; /* 画面高さの80%まで */
-    width: auto; /* 幅は自動調整 */
+    max-width: 100%; /* 画面幅の100%まで */
+    width: 100%; /* 幅を100%に設定 */
     margin: 0 auto; /* 中央揃え */
 }
 .scanner__video { 
@@ -53,8 +53,8 @@
 }
 .scanner__guide { 
     position: absolute; 
-    inset: 15% 15% auto 15%; /* ガイド枠のサイズを調整 */
-    height: 50%; /* 高さを調整 */
+    inset: 20% 20% auto 20%; /* ガイド枠のサイズを調整 */
+    aspect-ratio: 1; /* 正方形に制限 */
     border: 2px solid rgba(0,86,179,0.8); 
     border-radius: 8px; 
 }
